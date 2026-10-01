@@ -1,0 +1,92 @@
+{
+  "name": "ratio-fill",
+  "productName": "RatioFill",
+  "version": "1.0.0",
+  "description": "영상 비율 변환 + 여백 이미지 채우기",
+  "main": "main.js",
+  "author": "sjb",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "ffmpeg:win": "npm_config_platform=win32 npm_config_arch=x64 npm rebuild ffmpeg-static",
+    "dist:all": "electron-builder --mac --win",
+    "test": "node --test test/layout.test.js",
+    "test:ffmpeg": "node test/filter.test.js"
+  },
+  "build": {
+    "appId": "com.sjb.ratiofill",
+    "productName": "RatioFill",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "ffmpeg.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.video",
+      "files": [
+        "!node_modules/ffmpeg-static/ffmpeg.exe*"
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "files": [
+        "!node_modules/ffmpeg-static/ffmpeg",
+        "!node_modules/ffmpeg-static/ffmpeg.LICENSE",
+        "!node_modules/ffmpeg-static/ffmpeg.README"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0"
+  },
+  "repository": "github:plumt/ratiofill",
+  "homepage": "https://github.com/plumt/ratiofill"
+}

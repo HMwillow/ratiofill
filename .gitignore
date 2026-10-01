@@ -1,0 +1,5 @@
+node_modules/
+dist/
+test/out_test.mp4
+test/frame.png
+.DS_Store

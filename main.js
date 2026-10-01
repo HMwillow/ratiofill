@@ -1,0 +1,75 @@
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const path = require('path');
+const { probe, runExport } = require('./ffmpeg');
+
+let win = null;
+
+function createWindow() {
+  win = new BrowserWindow({
+    width: 1320, height: 860, minWidth: 1000, minHeight: 640,
+    title: 'RatioFill',
+    backgroundColor: '#17181c',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  win.setMenuBarVisibility(false);
+  win.loadFile(path.join(__dirname, 'src', 'index.html'));
+
+  // 개발용: RATIOFILL_OPEN=<영상경로> 자동 열기, RATIOFILL_SHOT=<png경로> 창 캡처 후 종료
+  win.webContents.on('console-message', (ev) => { if (process.env.RATIOFILL_SHOT || process.env.RATIOFILL_DEBUG) console.log(`[renderer:${ev.level}] ${ev.message} (${String(ev.sourceId).split('/').pop()}:${ev.lineNumber})`); });
+  win.webContents.on('did-finish-load', () => {
+    if (process.env.RATIOFILL_OPEN) win.webContents.send('open-video', process.env.RATIOFILL_OPEN);
+    if (process.env.RATIOFILL_IMAGE) setTimeout(() => win.webContents.send('dev-image', process.env.RATIOFILL_IMAGE), 800);
+    if (process.env.RATIOFILL_SHOT) {
+      setTimeout(async () => {
+        const img = await win.webContents.capturePage();
+        require('fs').writeFileSync(process.env.RATIOFILL_SHOT, img.toPNG());
+        app.quit();
+      }, 3500);
+    }
+  });
+}
+
+app.whenReady().then(createWindow);
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+
+ipcMain.handle('pick-video', async () => {
+  const r = await dialog.showOpenDialog(win, {
+    properties: ['openFile'],
+    filters: [{ name: '영상', extensions: ['mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi', 'mpg', 'mpeg'] }],
+  });
+  return r.canceled ? null : r.filePaths[0];
+});
+
+ipcMain.handle('pick-image', async () => {
+  const r = await dialog.showOpenDialog(win, {
+    properties: ['openFile'],
+    filters: [{ name: '이미지', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tif', 'tiff'] }],
+  });
+  return r.canceled ? null : r.filePaths[0];
+});
+
+ipcMain.handle('pick-output', async (_e, defaultName) => {
+  const r = await dialog.showSaveDialog(win, {
+    defaultPath: defaultName,
+    filters: [{ name: 'MP4', extensions: ['mp4'] }],
+  });
+  return r.canceled ? null : r.filePath;
+});
+
+ipcMain.handle('probe', (_e, file) => probe(file));
+
+ipcMain.handle('export', (_e, job) =>
+  runExport(job, (p) => { if (win && !win.isDestroyed()) win.webContents.send('export-progress', p); })
+);
+
+ipcMain.handle('cancel-export', () => {
+  if (runExport.current) { try { runExport.current.kill('SIGKILL'); } catch (_) {} }
+  return true;
+});
+
+ipcMain.handle('show-in-folder', (_e, p) => { shell.showItemInFolder(p); return true; });

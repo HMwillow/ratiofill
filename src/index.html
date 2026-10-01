@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; media-src 'self' file:; style-src 'self' 'unsafe-inline';" />
+  <title>RatioFill</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <aside id="sidebar">
+    <section class="panel">
+      <h2>1. 영상</h2>
+      <div class="row">
+        <button id="btnVideo" class="primary">영상 선택</button>
+        <span id="videoName" class="file">없음</span>
+      </div>
+      <div id="videoInfo" class="dim"></div>
+    </section>
+
+    <section class="panel">
+      <h2>2. 출력 비율</h2>
+      <div id="presets" class="presets"></div>
+      <div class="row">
+        <label>가로 <input id="outW" type="number" min="16" step="2" /></label>
+        <label>세로 <input id="outH" type="number" min="16" step="2" /></label>
+        <span id="ratioLabel" class="dim"></span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>3. 영상 위치</h2>
+      <div class="row">
+        <span id="posStart" class="dim">위</span>
+        <input id="pos" type="range" min="0" max="100" value="50" />
+        <span id="posEnd" class="dim">아래</span>
+      </div>
+      <div class="row">
+        <button data-pos="0">시작</button>
+        <button data-pos="50">가운데</button>
+        <button data-pos="100">끝</button>
+        <label class="grow right">배경색 <input id="bg" type="color" value="#000000" /></label>
+      </div>
+    </section>
+
+    <div id="margins"></div>
+    <div id="noMargin" class="panel dim" hidden>여백 없음 (영상 비율과 출력 비율이 같습니다)</div>
+
+    <section class="panel">
+      <h2>5. 내보내기</h2>
+      <div class="row">
+        <label>화질
+          <select id="crf">
+            <option value="16">최고 (CRF 16)</option>
+            <option value="18" selected>높음 (CRF 18)</option>
+            <option value="23">보통 (CRF 23)</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button id="btnExport" class="primary grow">MP4로 내보내기</button>
+        <button id="btnCancel" hidden>취소</button>
+      </div>
+      <div id="progressWrap" hidden><div id="progressBar"></div></div>
+      <div id="status" class="dim"></div>
+    </section>
+  </aside>
+
+  <main id="preview">
+    <div id="stage">
+      <canvas id="canvas" width="1080" height="1080"></canvas>
+    </div>
+    <div id="transport">
+      <button id="btnPlay" disabled>재생</button>
+      <input id="seek" type="range" min="0" max="1000" value="0" disabled />
+      <span id="time" class="dim">0:00 / 0:00</span>
+    </div>
+    <div id="hint" class="dim">영상 영역을 클릭하면 영상을, 여백을 클릭하면 이미지를 고릅니다. 파일을 끌어다 놓아도 됩니다.</div>
+  </main>
+
+  <video id="video" muted playsinline preload="auto"></video>
+  <div id="toast" hidden></div>
+  <script src="layout.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
