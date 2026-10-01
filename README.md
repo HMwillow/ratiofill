@@ -46,15 +46,21 @@ npx electron test/web-smoke.js http://127.0.0.1:8080/   # 웹 번들 스모크 �
 
 ## 배포
 
-### 자동 (GitHub Actions)
-
-- **웹**: `main` 에 push 하면 `.github/workflows/pages.yml` 이 `dist-web` 을 만들어 GitHub Pages 에 올린다. 몇 분 뒤 https://plumt.github.io/ratiofill/ 에 반영.
-- **설치 파일**: 버전 태그를 push 하면 `.github/workflows/release.yml` 이 Windows(x64)·Mac(arm64, x64) 빌드를 만들어 Releases 에 올린다.
+### 한 번에 (권장)
 
 ```bash
-npm version patch          # package.json 버전 올리고 git tag 생성 (v1.0.1)
-git push origin main --tags
+npm run release -- "무엇을 바꿨는지"        # 커밋 → 버전 올림(1.0.0→1.0.1) → push → Actions 완료까지 대기 → 링크 출력
+npm run release -- "설명" --minor            # 1.0.0 → 1.1.0
+npm run release -- --local                   # 추가로 이 PC 에서 빌드해 release/v<버전>/ 에 설치 파일 4개 + 웹 zip + 소스 zip
+npm run release -- --dry-run                 # 실행할 단계만 확인
 ```
+
+push 가 끝나면 GitHub Actions 가 Windows exe 2개·Mac dmg 2개를 Releases 에 올리고 웹을 GitHub Pages 에 배포한다(10~15분). 스크립트는 그동안 진행 상황을 보여 주고 끝나면 다운로드 링크를 출력한다. 변경 사항이 없으면 설명 없이 `npm run release` 만 실행해도 된다.
+
+### 자동 (GitHub Actions 세부)
+
+- **웹**: `main` 에 push 하면 `.github/workflows/pages.yml` 이 `dist-web` 을 만들어 GitHub Pages 에 올린다. 몇 분 뒤 https://plumt.github.io/ratiofill/ 에 반영.
+- **설치 파일**: 버전 태그를 push 하면 `.github/workflows/release.yml` 이 Windows(x64)·Mac(arm64, x64) 빌드를 만들어 Releases 에 올린다. (`npm run release` 가 하는 일이 바로 이것)
 
 ### 수동 (코드를 받아 내 PC 에서 바로 재설치)
 
@@ -100,6 +106,7 @@ scripts/
   build-web.js        dist-web/ 조립 (src 공용 파일 + web/bridge.js + node_modules 의 ffmpeg.wasm)
   serve-web.js        dist-web 로컬 서버
   update-and-build.*  코드 받아 재빌드·재설치 (Mac .sh / Windows .ps1 + .cmd)
+  release.js          한 번에 배포: 커밋 → 버전 → push → Actions(설치 파일+웹) 완료 대기 → 링크 출력 (--local 로 로컬 빌드 묶음)
 test/
   layout.test.js      레이아웃 단위 테스트
   filter.test.js      실제 ffmpeg 로 내보내기 검증 (수동)

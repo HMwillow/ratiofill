@@ -16,7 +16,8 @@
     "test": "node --test test/layout.test.js",
     "test:ffmpeg": "node test/filter.test.js",
     "web:build": "node scripts/build-web.js",
-    "web": "node scripts/build-web.js && node scripts/serve-web.js"
+    "web": "node scripts/build-web.js && node scripts/serve-web.js",
+    "release": "node scripts/release.js"
   },
   "build": {
     "appId": "com.sjb.ratiofill",
