@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
   probe: (p) => ipcRenderer.invoke('probe', p),
   export: (job) => ipcRenderer.invoke('export', job),
   cancelExport: () => ipcRenderer.invoke('cancel-export'),
+  imageFromUrl: (url) => ipcRenderer.invoke('fetch-image', url),
   showInFolder: (p) => ipcRenderer.invoke('show-in-folder', p),
   onOpenVideo: (cb) => ipcRenderer.on('open-video', (_e, p) => cb(p)),
   onDevImage: (cb) => ipcRenderer.on('dev-image', (_e, p) => cb(p)),

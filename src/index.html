@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; media-src 'self' file:; style-src 'self' 'unsafe-inline';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; img-src 'self' file: data: blob:; media-src 'self' file: blob:; style-src 'self' 'unsafe-inline';" />
   <title>RatioFill</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -30,14 +30,14 @@
     <section class="panel">
       <h2>3. 영상 위치</h2>
       <div class="row">
-        <span id="posStart" class="dim">위</span>
+        <span id="posStart" class="dim">상단</span>
         <input id="pos" type="range" min="0" max="100" value="50" />
-        <span id="posEnd" class="dim">아래</span>
+        <span id="posEnd" class="dim">하단</span>
       </div>
       <div class="row">
-        <button data-pos="0">시작</button>
-        <button data-pos="50">가운데</button>
-        <button data-pos="100">끝</button>
+        <button data-pos="0">상단</button>
+        <button data-pos="50">중앙</button>
+        <button data-pos="100">하단</button>
         <label class="grow right">배경색 <input id="bg" type="color" value="#000000" /></label>
       </div>
     </section>
@@ -79,7 +79,10 @@
 
   <video id="video" muted playsinline preload="auto"></video>
   <div id="toast" hidden></div>
+  <!-- bridge.js: 데스크톱은 src/bridge.js(Electron), 웹 빌드는 web/bridge.js(ffmpeg.wasm) 가 같은 이름으로 들어간다 -->
   <script src="layout.js"></script>
-  <script src="renderer.js"></script>
+  <script src="filtergraph.js"></script>
+  <script src="bridge.js"></script>
+  <script src="ui.js"></script>
 </body>
 </html>
