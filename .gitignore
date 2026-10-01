@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-web/
 test/out_test.mp4
 test/frame.png
 .DS_Store

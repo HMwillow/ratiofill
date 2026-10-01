@@ -14,7 +14,9 @@
     "ffmpeg:win": "npm_config_platform=win32 npm_config_arch=x64 npm rebuild ffmpeg-static",
     "dist:all": "electron-builder --mac --win",
     "test": "node --test test/layout.test.js",
-    "test:ffmpeg": "node test/filter.test.js"
+    "test:ffmpeg": "node test/filter.test.js",
+    "web:build": "node scripts/build-web.js",
+    "web": "node scripts/build-web.js && node scripts/serve-web.js"
   },
   "build": {
     "appId": "com.sjb.ratiofill",
@@ -81,6 +83,10 @@
     }
   },
   "devDependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/core-mt": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "electron": "^44.5.1",
     "electron-builder": "^26.15.3"
   },
