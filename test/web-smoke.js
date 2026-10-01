@@ -1,11 +1,13 @@
 // 웹 번들 스모크 테스트 (Electron 의 Chromium 으로 dist-web 을 열어 드롭 → 변환까지 실행)
 //   node scripts/build-web.js && node scripts/serve-web.js 8787 &   (서버 먼저)
-//   npx electron test/web-smoke.js http://127.0.0.1:8787/ [video] [image] [screenshot.png]
-// 샘플 파일은 서버 루트의 _test/sample.mp4, _test/sample.png 를 fetch 로 읽는다.
+//   npx electron test/web-smoke.js <url> [screenshot.png] [video] [image]
+// video/image 를 주면 그 파일을 페이지에 주입하고, 없으면 서버 루트의 _test/sample.mp4, _test/sample.png 를 fetch 로 읽는다.
+// 배포된 사이트 검증: npx electron test/web-smoke.js https://plumt.github.io/ratiofill/ shot.png ~/a.mp4 ~/b.png
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 
-const [url = 'http://127.0.0.1:8787/', shot = ''] = process.argv.slice(2);
+const [url = 'http://127.0.0.1:8787/', shot = '', videoPath = '', imagePath = ''] = process.argv.slice(2);
+const b64 = (p) => (p ? fs.readFileSync(p).toString('base64') : '');
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({ width: 1320, height: 860, show: false });
@@ -15,7 +17,11 @@ app.whenReady().then(async () => {
   const result = await win.webContents.executeJavaScript(`(async () => {
     const out = { isolated: window.crossOriginIsolated, bridge: !!window.RatioFillBridge };
     const $ = (s) => document.querySelector(s);
-    const toFile = async (p, name, type) => new File([await fetch(p).then((r) => r.blob())], name, { type });
+    const samples = { video: '${b64(videoPath)}', image: '${b64(imagePath)}' };
+    const fromB64 = (s, name, type) => { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new File([u], name, { type }); };
+    const toFile = async (p, name, type) => samples[name.startsWith('sample.mp4') ? 'video' : 'image']
+      ? fromB64(samples[name.startsWith('sample.mp4') ? 'video' : 'image'], name, type)
+      : new File([await fetch(p).then((r) => r.blob())], name, { type });
     const drop = (file, fx, fy) => {
       const dt = new DataTransfer(); dt.items.add(file);
       const c = $('#canvas').getBoundingClientRect();

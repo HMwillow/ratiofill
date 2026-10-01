@@ -22,7 +22,7 @@
   const { PRESETS, computeLayout: layoutOf, ratioText } = window.RatioFillLayout;
   const $ = (s) => document.querySelector(s);
 
-  const newMargin = () => ({ image: null, img: null, fit: 'cover', ax: 0.5, ay: 0.5 });
+  const newMargin = () => ({ image: null, img: null, fit: 'contain', ax: 0.5, ay: 0.5 }); // 기본: 안에 맞추기(잘림 없음)
   const state = {
     video: null,            // { path, width, height, duration, fps, hasAudio, playable }
     outW: 1080, outH: 1080,
@@ -74,6 +74,19 @@
     if (canvas.width !== L.outW || canvas.height !== L.outH) {
       canvas.width = L.outW; canvas.height = L.outH; fitCanvas();
     }
+    // 여백 구성이 바뀌면 그리기 전에: 사라진 여백의 이미지를 비어 있는 새 여백으로 옮긴다
+    // (영상을 좌측→우측으로 옮기면 여백이 오른쪽→왼쪽으로 바뀌는데, 이미지도 같이 따라가도록)
+    const sig = L.margins.map((m) => m.key + m.name).join('|');
+    let panelsDirty = false;
+    if (sig !== lastSig) {
+      const present = L.margins.map((m) => m.key);
+      for (const g of ['a', 'b']) {
+        if (present.includes(g) || !state.margins[g].image) continue;
+        const target = present.find((k) => !state.margins[k].image);
+        if (target) { state.margins[target] = state.margins[g]; state.margins[g] = newMargin(); }
+      }
+      lastSig = sig; panelsDirty = true;
+    }
     const base = Math.max(14, Math.round(Math.min(L.outW, L.outH) / 32));
     ctx.fillStyle = state.bg;
     ctx.fillRect(0, 0, L.outW, L.outH);
@@ -107,9 +120,7 @@
       drawLabel('+ 영상 추가 (클릭 또는 끌어다 놓기)', L.outW / 2, L.outH / 2, base * 1.4, L.outW * 0.9);
     }
 
-    // 여백 패널은 구성이 바뀔 때만 재생성
-    const sig = L.margins.map((m) => m.key + m.name).join('|');
-    if (sig !== lastSig) { lastSig = sig; buildMarginPanels(L); }
+    if (panelsDirty) { panelsDirty = false; buildMarginPanels(L); }
     for (const m of L.margins) {
       const el = document.querySelector(`#margins .panel[data-key="${m.key}"] .size`);
       if (el) el.textContent = `${m.w}×${m.h}`;
@@ -155,13 +166,16 @@
         <div class="row">
           <label>맞춤
             <select data-field="fit">
+              <option value="contain">안에 맞추기 (잘림 없음)</option>
               <option value="cover">꽉 채우기 (넘치면 잘림)</option>
-              <option value="contain">안에 맞추기 (여백 남음)</option>
               <option value="stretch">늘리기 (비율 무시)</option>
             </select>
           </label>
+        </div>
+        <div class="row align-row">
           <span class="dim">정렬</span>
           <div class="align-grid"></div>
+          <span class="dim align-name"></span>
         </div>`;
       p.querySelector('[data-field="fit"]').value = mg.fit;
       const grid = p.querySelector('.align-grid');
@@ -169,9 +183,10 @@
         const b = document.createElement('button');
         b.dataset.ax = ax; b.dataset.ay = ay; b.title = alignName(ax, ay);
         if (mg.ax === ax && mg.ay === ay) b.classList.add('on');
-        b.onclick = () => { mg.ax = ax; mg.ay = ay; grid.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); draw(); };
+        b.onclick = () => { mg.ax = ax; mg.ay = ay; grid.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); p.querySelector('.align-name').textContent = alignName(ax, ay); draw(); };
         grid.appendChild(b);
       }
+      p.querySelector('.align-name').textContent = alignName(mg.ax, mg.ay);
       p.querySelector('[data-act="pick"]').onclick = () => pickMarginImage(m.key);
       p.querySelector('[data-act="clear"]').onclick = () => setMarginImage(m.key, null);
       const urlInput = p.querySelector('[data-field="url"]');
@@ -382,6 +397,7 @@
   }
   if (bridge.onOpenVideo) bridge.onOpenVideo((p) => loadVideo(p));
   if (bridge.onDevImage) bridge.onDevImage((p) => setMarginImage('a', p));
+  if (bridge.onDevPreset) bridge.onDevPreset((label) => { const b = [...presetHost.querySelectorAll('button')].find((x) => x.textContent === label); if (b) b.click(); });
   syncSizeInputs();
   fitCanvas();
   draw();

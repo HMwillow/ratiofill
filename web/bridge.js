@@ -9,11 +9,14 @@
     core: 'vendor/core/ffmpeg-core',            // 단일스레드 코어 (폴백)
   };
 
-  // 기본은 단일 스레드 코어. 멀티스레드 코어(core-mt)는 인코딩 중 멈추는 문제가 있어 ?mt=1 일 때만 쓴다.
+  // 기본은 단일 스레드 코어. 멀티스레드 코어(core-mt)는 -threads 를 제한하면 단순 변환은 되지만
+  // 여백 합성(filter_complex overlay)에서는 멈춘다(ffmpeg.wasm 0.12 결함). ?mt=1 로만 실험한다.
   // 멀티스레드는 crossOriginIsolated 가 필요해서, 헤더를 못 주는 호스팅(GitHub Pages)에서는 coi-serviceworker 로 우회한다.
+  // ?preset= 으로 x264 preset, ?crf= 로 화질, ?threads= 로 스레드 수(mt 전용)를 바꿀 수 있다.
   const params = new URLSearchParams(location.search);
   const WANT_MT = params.get('mt') === '1';
-  const PRESET = params.get('preset') || 'veryfast';
+  const THREADS = Math.max(1, Math.min(+(params.get('threads') || 4), (navigator.hardwareConcurrency || 4) - 1));
+  const PRESET_PARAM = params.get('preset');
   if (WANT_MT && location.protocol.startsWith('http') && !window.crossOriginIsolated) {
     const s = document.createElement('script'); s.src = 'coi-serviceworker.js'; document.head.appendChild(s);
   }
@@ -97,12 +100,17 @@
     return new Promise((resolve) => {
       const v = document.createElement('video');
       v.preload = 'metadata'; v.muted = true;
-      const done = (r) => { v.removeAttribute('src'); v.load(); resolve(r); };
+      let settled = false;
+      const done = (r) => { if (settled) return; settled = true; clearTimeout(timer); v.removeAttribute('src'); v.load(); resolve(r); };
+      const fallback = () => probeWithFfmpeg(file).then(done);
       v.onloadedmetadata = () => {
-        if (v.videoWidth && v.videoHeight) done({ ok: true, width: v.videoWidth, height: v.videoHeight, duration: v.duration || 0, fps: 0, hasAudio: undefined });
-        else probeWithFfmpeg(file).then(done);
+        const d = isFinite(v.duration) ? v.duration : 0;
+        if (v.videoWidth && v.videoHeight && d) done({ ok: true, width: v.videoWidth, height: v.videoHeight, duration: d, fps: 0, hasAudio: undefined });
+        else fallback();
       };
-      v.onerror = () => probeWithFfmpeg(file).then(done);
+      v.onerror = fallback;
+      // 백그라운드 탭에서는 브라우저가 미디어 로드를 미루므로 일정 시간 뒤 ffmpeg 로 읽는다
+      const timer = setTimeout(fallback, 8000);
       v.src = toFileUrl(file);
     });
   }
@@ -140,10 +148,13 @@
         margins.push({ ...m, image: n });
       }
       const outName = 'out.mp4';
+      // 브라우저 인코딩은 느려서 속도 우선 preset. ultrafast 는 veryfast 보다 약 1.7배 빠르지만 같은 CRF 에서 용량이 커지므로 CRF 를 올려 보정
+      const crf = +(params.get('crf') || (job.crf <= 16 ? 20 : job.crf <= 18 ? 22 : 26));
       const args = window.RatioFillFilter.buildFilterArgs({
-        ...job, input: inName, output: outName, margins,
-        preset: PRESET,
+        ...job, input: inName, output: outName, margins, crf,
+        preset: PRESET_PARAM || 'ultrafast',
       });
+      if (ff.multiThread) args.push('-threads', String(THREADS));
       logs = [];
       const onP = ({ progress, time }) => onProgress && onProgress({
         ratio: isFinite(progress) ? Math.max(0, Math.min(1, progress)) : undefined,
@@ -151,7 +162,7 @@
       });
       ff.on('progress', onP);
       let code;
-      try { code = await ff.exec(['-y', '-hide_banner', ...args]); }
+      try { code = await ff.exec(['-y', '-hide_banner', ...(ff.multiThread ? ['-threads', String(THREADS)] : []), ...args]); }
       finally { ff.off('progress', onP); }
       if (code !== 0) return { ok: false, error: `ffmpeg 종료 코드 ${code}\n` + logs.slice(-6).join('\n') };
 

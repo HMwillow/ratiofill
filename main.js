@@ -24,11 +24,11 @@ function createWindow() {
   win.webContents.on('console-message', (ev) => { if (process.env.RATIOFILL_SHOT || process.env.RATIOFILL_DEBUG) console.log(`[renderer:${ev.level}] ${ev.message} (${String(ev.sourceId).split('/').pop()}:${ev.lineNumber})`); });
   win.webContents.on('did-finish-load', () => {
     if (process.env.RATIOFILL_OPEN) win.webContents.send('open-video', process.env.RATIOFILL_OPEN);
+    if (process.env.RATIOFILL_PRESET) setTimeout(() => win.webContents.send('dev-preset', process.env.RATIOFILL_PRESET), 600);
     if (process.env.RATIOFILL_IMAGE) setTimeout(() => win.webContents.send('dev-image', process.env.RATIOFILL_IMAGE), 800);
     if (process.env.RATIOFILL_SHOT) {
       setTimeout(async () => {
-        const img = await win.webContents.capturePage();
-        require('fs').writeFileSync(process.env.RATIOFILL_SHOT, img.toPNG());
+        try { const img = await win.webContents.capturePage(); fs.writeFileSync(process.env.RATIOFILL_SHOT, img.toPNG()); } catch (e) { console.error('capture failed:', e.message); }
         app.quit();
       }, 3500);
     }

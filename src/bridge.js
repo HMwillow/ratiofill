@@ -27,6 +27,7 @@
     kindOf: (p) => (VIDEO_EXT.includes(ext(p)) ? 'video' : IMAGE_EXT.includes(ext(p)) ? 'image' : null),
     onOpenVideo: (cb) => api.onOpenVideo(cb),
     onDevImage: (cb) => api.onDevImage(cb),
+    onDevPreset: (cb) => api.onDevPreset(cb),
     labels: { export: 'MP4로 내보내기' },
   };
 })();
