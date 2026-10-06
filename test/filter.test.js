@@ -14,7 +14,8 @@ const { computeLayout } = require('../src/layout');
   const L = computeLayout({ video: info, outW: 1920, outH: 1080, pos: 1 });
   const job = {
     input, output, outW: L.outW, outH: L.outH, bg: '#1e2a44', crf: 23, video: L.video,
-    margins: L.margins.map((m) => ({ ...m, image, fit: 'cover', ax: 0.5, ay: 0.5 })),
+    margins: L.margins,
+    background: { image, fit: 'cover', mode: 'margins' },
   };
   console.log('args:', buildArgs(job).join(' '));
   const t = Date.now();

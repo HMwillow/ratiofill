@@ -2,7 +2,7 @@
 //   node scripts/build-web.js && node scripts/serve-web.js 8787 &   (서버 먼저)
 //   npx electron test/web-smoke.js <url> [screenshot.png] [video] [image]
 // video/image 를 주면 그 파일을 페이지에 주입하고, 없으면 서버 루트의 _test/sample.mp4, _test/sample.png 를 fetch 로 읽는다.
-// 배포된 사이트 검증: npx electron test/web-smoke.js https://plumt.github.io/ratiofill/ shot.png ~/a.mp4 ~/b.png
+// 배포된 사이트 검증: npx electron test/web-smoke.js https://hmwillow.github.io/ratiofill/ shot.png ~/a.mp4 ~/b.png
 const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 

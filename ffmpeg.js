@@ -1,11 +1,12 @@
 // 데스크톱용 ffmpeg 실행: 경로 해석, 프로브, 내보내기 (main 프로세스 / test 스크립트 공용)
 const { spawn } = require('child_process');
+const fs = require('fs');
 const { buildFilterArgs } = require('./src/filtergraph');
 
 function ffmpegPath() {
   let p = null;
   try { p = require('ffmpeg-static'); } catch (_) { p = null; }
-  if (!p) return process.env.RATIOFILL_FFMPEG || 'ffmpeg';
+  if (!p || !fs.existsSync(p)) return process.env.RATIOFILL_FFMPEG || 'ffmpeg';
   return p.replace('app.asar', 'app.asar.unpacked');
 }
 

@@ -5,15 +5,15 @@
 
 | 쓰는 방법 | 어디서 | 비고 |
 |---|---|---|
-| 웹 버전 | https://plumt.github.io/ratiofill/ | 설치 없음. 변환은 브라우저 안에서만 일어나고 영상은 업로드되지 않음 |
-| 데스크톱 앱 | https://github.com/plumt/ratiofill/releases | Windows `Setup.exe` / 포터블 `exe`, Mac `arm64.dmg`(Apple Silicon) / `.dmg`(Intel) |
+| 웹 버전 | https://hmwillow.github.io/ratiofill/ | 설치 없음. 변환은 브라우저 안에서만 일어나고 영상은 업로드되지 않음 |
+| 데스크톱 앱 | https://github.com/HMwillow/ratiofill/releases | Windows `Setup.exe` / 포터블 `exe`, Mac `arm64.dmg`(Apple Silicon) / `.dmg`(Intel) |
 
 ## 사용법
 
 1. 미리보기의 영상 영역 클릭(또는 영상 파일 끌어다 놓기) → 영상 선택
 2. 출력 비율 프리셋 선택. 가로/세로 픽셀을 직접 입력해도 됨(임의 비율)
 3. 영상 위치 슬라이더로 영상을 위/아래(또는 좌/우)로 이동 → 반대쪽에 여백이 생김
-4. 여백 클릭(또는 이미지 끌어다 놓기) → 이미지 선택, 맞춤(꽉 채우기 / 안에 맞추기 / 늘리기)과 정렬(3×3) 조정
+4. 배경 영역 클릭(또는 이미지 끌어다 놓기) → 이미지 한 장 선택. 배치(자동/여백/전체 화면/영상 위)와 맞춤(안에 맞추기/꽉 채우기/늘리기) 조정. 같은 비율이라 영상에 가려지는 배너는 영상 크기 슬라이더로 조절할 수 있다.
    - 이미지 URL 을 붙여넣고 `가져오기` 를 눌러도 된다 (웹 버전은 그 서버가 CORS 를 허용해야 함)
 5. `MP4로 내보내기` → 저장 위치 선택 → 진행률 표시 → 완료 시 Finder/탐색기에서 파일 표시 (웹은 바로 내려받기)
 
@@ -59,13 +59,13 @@ push 가 끝나면 GitHub Actions 가 Windows exe 2개·Mac dmg 2개를 Releases
 
 ### 자동 (GitHub Actions 세부)
 
-- **웹**: `main` 에 push 하면 `.github/workflows/pages.yml` 이 `dist-web` 을 만들어 GitHub Pages 에 올린다. 몇 분 뒤 https://plumt.github.io/ratiofill/ 에 반영.
+- **웹**: `main` 에 push 하면 `.github/workflows/pages.yml` 이 `dist-web` 을 만들어 GitHub Pages 에 올린다. 몇 분 뒤 https://hmwillow.github.io/ratiofill/ 에 반영.
 - **설치 파일**: 버전 태그를 push 하면 `.github/workflows/release.yml` 이 Windows(x64)·Mac(arm64, x64) 빌드를 만들어 Releases 에 올린다. (`npm run release` 가 하는 일이 바로 이것)
 
 ### 수동 (코드를 받아 내 PC 에서 바로 재설치)
 
 ```bash
-git clone https://github.com/plumt/ratiofill.git && cd ratiofill
+git clone https://github.com/HMwillow/ratiofill.git && cd ratiofill
 ./scripts/update-and-build.sh        # Mac: pull → install → test → 빌드 → /Applications 설치 → 실행
 scripts\update-and-build.cmd         # Windows: pull → install → test → 빌드 → Setup.exe 실행
 ```
@@ -91,7 +91,7 @@ npm run dist:win     # win 만
 ```
 src/                  공용 (데스크톱·웹 둘 다 그대로 씀)
   index.html          마크업, CSP. layout.js → filtergraph.js → bridge.js → ui.js 순서로 로드
-  ui.js               UI 상태, 캔버스 미리보기, 여백 패널, 클릭/드롭, 내보내기 흐름. 플랫폼 일은 RatioFillBridge 에 위임
+  ui.js               UI 상태, 캔버스 미리보기, 배너 배치, 클릭/드롭, 내보내기 흐름. 플랫폼 일은 RatioFillBridge 에 위임
   layout.js           레이아웃 계산 순수 함수. 영상 배치·여백 영역 산출
   filtergraph.js      ffmpeg 필터 그래프 생성 순수 함수
   style.css
@@ -119,10 +119,10 @@ test/
 ### 데이터 흐름
 
 ```
-ui.js state {video, outW, outH, pos, bg, margins{a,b}}
+ui.js state {video, outW, outH, pos, videoScale, bg, background}
    → layout.computeLayout()  → {video:{x,y,w,h}, margins:[{key,x,y,w,h}]}
    → (미리보기) canvas 에 동일 규칙으로 그림
-   → (내보내기) job = {input, output, outW, outH, bg, crf, video, margins[+image,fit,ax,ay]}
+   → (내보내기) job = {input, output, outW, outH, bg, crf, video, background, margins}
    → bridge.export(job)
         데스크톱: IPC → ffmpeg.js → filtergraph.buildFilterArgs → spawn ffmpeg → '-progress pipe:1'
         웹:       파일을 ffmpeg.wasm 가상 FS 에 쓰고 같은 인자로 exec → 결과 blob 내려받기

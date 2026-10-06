@@ -140,18 +140,18 @@
       status('파일 준비 중…');
       const inName = 'in.' + ext(job.input.name, 'mp4');
       await ff.writeFile(inName, new Uint8Array(await job.input.arrayBuffer())); written.push(inName);
-      const margins = [];
-      let i = 1;
-      for (const m of job.margins) {
-        const n = `img${i++}.${ext(m.image.name, 'png')}`;
-        await ff.writeFile(n, new Uint8Array(await m.image.arrayBuffer())); written.push(n);
-        margins.push({ ...m, image: n });
+      let background = null;
+      if (job.background && job.background.image) {
+        const image = job.background.image;
+        const name = 'background.' + ext(image.name, 'png');
+        await ff.writeFile(name, new Uint8Array(await image.arrayBuffer())); written.push(name);
+        background = { ...job.background, image: name };
       }
       const outName = 'out.mp4';
       // 브라우저 인코딩은 느려서 속도 우선 preset. ultrafast 는 veryfast 보다 약 1.7배 빠르지만 같은 CRF 에서 용량이 커지므로 CRF 를 올려 보정
       const crf = +(params.get('crf') || (job.crf <= 16 ? 20 : job.crf <= 18 ? 22 : 26));
       const args = window.RatioFillFilter.buildFilterArgs({
-        ...job, input: inName, output: outName, margins, crf,
+        ...job, input: inName, output: outName, background, crf,
         preset: PRESET_PARAM || 'ultrafast',
       });
       if (ff.multiThread) args.push('-threads', String(THREADS));

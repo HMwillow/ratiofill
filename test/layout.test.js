@@ -1,7 +1,7 @@
 // 레이아웃 계산 단위 테스트: node --test test/
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { computeLayout, ratioText, PRESETS } = require('../src/layout');
+const { computeLayout, ratioText, backgroundMode, PRESETS } = require('../src/layout');
 
 test('9:16 영상 → 1:1 출력: 좌우 여백, 가운데 정렬', () => {
   const L = computeLayout({ video: { width: 1080, height: 1920 }, outW: 1080, outH: 1080, pos: 0.5 });
@@ -50,4 +50,24 @@ test('ratioText / PRESETS', () => {
   assert.equal(ratioText(1920, 1080), '16:9');
   assert.equal(ratioText(1080, 1350), '4:5');
   assert.ok(PRESETS.length >= 6);
+});
+
+test('배너 비율에 따라 전체 배경 또는 보이는 여백을 선택', () => {
+  assert.equal(backgroundMode('auto', 1920, 1080, 3840, 2160, 0.5), 'canvas');
+  assert.equal(backgroundMode('auto', 1920, 1080, 3840, 2160, 0), 'margins');
+  assert.equal(backgroundMode('auto', 1920, 1080, 3840, 2160, 1), 'margins');
+  assert.equal(backgroundMode('auto', 1080, 1080, 1080, 1920, 0.5), 'margins');
+  assert.equal(backgroundMode('auto', 1080, 1080, 1080, 1080, 0.5), 'margins');
+  assert.equal(backgroundMode('auto', 1080, 1920, 1080, 1920, 0.5, true), 'overlay');
+  assert.equal(backgroundMode('auto', 1920, 1080, 1920, 1080, 0.5, true), 'overlay');
+  assert.equal(backgroundMode('margins', 1080, 1920, 1080, 1920, 0.5, true), 'margins');
+  assert.equal(backgroundMode('margins', 1920, 1080, 3840, 2160), 'margins');
+});
+
+test('같은 비율의 영상도 크기를 줄여 배너가 보일 공간을 만든다', () => {
+  const L = computeLayout({ video: { width: 1080, height: 1920 }, outW: 1080, outH: 1920, pos: 0.5, videoScale: 0.62 });
+  assert.ok(L.video.w < L.outW && L.video.h < L.outH);
+  assert.ok(L.margins.length >= 2);
+  assert.equal(L.video.x + L.video.w / 2, L.outW / 2);
+  assert.equal(L.video.y + L.video.h / 2, L.outH / 2);
 });

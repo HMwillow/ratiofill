@@ -22,7 +22,7 @@
 
   function even(n) { return Math.max(2, Math.round(n / 2) * 2); }
 
-  function computeLayout({ video, outW, outH, pos }) {
+  function computeLayout({ video, outW, outH, pos, videoScale = 1 }) {
     outW = even(outW); outH = even(outH);
     pos = Math.min(1, Math.max(0, +pos || 0));
     const L = { outW, outH, axis: null, video: null, margins: [] };
@@ -35,6 +35,24 @@
     } else {
       h = outH; w = Math.min(outW, even(outH * vidA)); y = 0;
       x = Math.round((outW - w) * pos); L.axis = 'h';
+    }
+    videoScale = Math.min(1, Math.max(0.3, +videoScale || 1));
+    if (videoScale < 1) {
+      w = even(w * videoScale); h = even(h * videoScale);
+      if (L.axis === 'v') {
+        x = Math.round((outW - w) / 2);
+        y = Math.round((outH - h) * pos);
+      } else {
+        x = Math.round((outW - w) * pos);
+        y = Math.round((outH - h) / 2);
+      }
+      L.video = { x, y, w, h };
+      const push = (key, name, x, y, w, h) => { if (w >= 2 && h >= 2) L.margins.push({ key, name, x, y, w, h }); };
+      push('top', '위쪽 여백', 0, 0, outW, y);
+      push('bottom', '아래쪽 여백', 0, y + h, outW, outH - y - h);
+      push('left', '왼쪽 여백', 0, y, x, h);
+      push('right', '오른쪽 여백', x + w, y, outW - x - w, h);
+      return L;
     }
     L.video = { x, y, w, h };
     if (L.axis === 'v') {
@@ -53,5 +71,17 @@
     return `${w / d}:${h / d}`;
   }
 
-  return { PRESETS, even, computeLayout, ratioText };
+  // 화면과 비율이 같은 배너는 전체 배경으로, 다른 비율은 보이는 여백에 배치한다.
+  function backgroundMode(mode, outW, outH, imageW, imageH, pos, transparentCenter) {
+    if (mode === 'canvas' || mode === 'margins' || mode === 'overlay') return mode;
+    if (transparentCenter) return 'overlay';
+    if (!imageW || !imageH) return 'margins';
+    const outputRatio = outW / outH;
+    const imageRatio = imageW / imageH;
+    const landscapeBanner = Math.abs(outputRatio - 16 / 9) / (16 / 9) <= 0.03;
+    return landscapeBanner && pos === 0.5 && Math.abs(imageRatio - outputRatio) / outputRatio <= 0.03
+      ? 'canvas' : 'margins';
+  }
+
+  return { PRESETS, even, computeLayout, ratioText, backgroundMode };
 });

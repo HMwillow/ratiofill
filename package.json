@@ -1,7 +1,7 @@
 {
   "name": "ratio-fill",
   "productName": "RatioFill",
-  "version": "1.0.1",
+  "version": "1.0.5",
   "description": "영상 비율 변환 + 여백 이미지 채우기",
   "main": "main.js",
   "author": "sjb",
@@ -13,7 +13,7 @@
     "dist:win": "electron-builder --win",
     "ffmpeg:win": "npm_config_platform=win32 npm_config_arch=x64 npm rebuild ffmpeg-static",
     "dist:all": "electron-builder --mac --win",
-    "test": "node --test test/layout.test.js",
+    "test": "node --test test/layout.test.js test/export.test.js",
     "test:ffmpeg": "node test/filter.test.js",
     "web:build": "node scripts/build-web.js",
     "web": "node scripts/build-web.js && node scripts/serve-web.js",
@@ -94,6 +94,6 @@
   "dependencies": {
     "ffmpeg-static": "^5.3.0"
   },
-  "repository": "github:plumt/ratiofill",
-  "homepage": "https://github.com/plumt/ratiofill"
+  "repository": "github:HMwillow/ratiofill",
+  "homepage": "https://github.com/HMwillow/ratiofill"
 }

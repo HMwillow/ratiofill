@@ -40,10 +40,44 @@
         <button data-pos="100">하단</button>
         <label class="grow right">배경색 <input id="bg" type="color" value="#000000" /></label>
       </div>
+      <div class="row">
+        <label>영상 크기 <input id="videoScale" type="range" min="30" max="100" value="100" /></label>
+        <span id="videoScaleValue" class="dim">100%</span>
+      </div>
     </section>
 
-    <div id="margins"></div>
-    <div id="noMargin" class="panel dim" hidden>여백 없음 (영상 비율과 출력 비율이 같습니다)</div>
+    <section class="panel">
+      <h2>4. 배경 이미지</h2>
+      <div class="row">
+        <button id="btnImage">이미지 선택</button>
+        <span id="imageName" class="file">없음</span>
+        <button id="btnClearImage" disabled>제거</button>
+      </div>
+      <div class="row">
+        <input id="imageUrl" type="url" class="grow" placeholder="또는 이미지 URL 붙여넣기" />
+        <button id="btnImageUrl">가져오기</button>
+      </div>
+      <div class="row">
+        <label>배치
+          <select id="imageMode">
+            <option value="auto" selected>자동 (배너 형태에 맞춰 배치)</option>
+            <option value="margins">보이는 여백에 맞추기</option>
+            <option value="canvas">전체 화면 배경</option>
+            <option value="overlay">영상 위에 표시 (투명 배너)</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>맞춤
+          <select id="imageFit">
+            <option value="contain" selected>안에 맞추기 (잘리지 않음)</option>
+            <option value="cover">꽉 채우기 (넘치면 잘림)</option>
+            <option value="stretch">늘리기 (비율 무시)</option>
+          </select>
+        </label>
+      </div>
+      <div class="dim">투명한 가운데가 있는 배너는 영상 위에 올립니다. 그 외에는 영상 위치와 배너 비율에 맞춰 배치합니다.</div>
+    </section>
 
     <section class="panel">
       <h2>5. 내보내기</h2>
@@ -53,6 +87,13 @@
             <option value="16">최고 (CRF 16)</option>
             <option value="18" selected>높음 (CRF 18)</option>
             <option value="23">보통 (CRF 23)</option>
+          </select>
+        </label>
+        <label>속도
+          <select id="speed">
+            <option value="veryfast" selected>빠름</option>
+            <option value="fast">균형</option>
+            <option value="medium">기존</option>
           </select>
         </label>
       </div>
@@ -74,7 +115,7 @@
       <input id="seek" type="range" min="0" max="1000" value="0" disabled />
       <span id="time" class="dim">0:00 / 0:00</span>
     </div>
-    <div id="hint" class="dim">영상 영역을 클릭하면 영상을, 여백을 클릭하면 이미지를 고릅니다. 파일을 끌어다 놓아도 됩니다.</div>
+    <div id="hint" class="dim">영상 영역을 클릭하면 영상을, 배경을 클릭하면 이미지를 고릅니다. 파일을 끌어다 놓아도 됩니다.</div>
   </main>
 
   <video id="video" muted playsinline preload="auto"></video>
