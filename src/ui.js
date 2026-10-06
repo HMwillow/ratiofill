@@ -108,6 +108,10 @@ function draw() {
   }
 
   $('#ratioLabel').textContent = '= ' + ratioText(L.outW, L.outH);
+  const sizes = !L.video ? '영상 선택 후 여백 크기가 표시됩니다.'
+    : L.margins.length ? '남은 여백: ' + L.margins.map((m) => `${m.name.replace(' 여백', '')} ${m.w}×${m.h}px`).join(' · ')
+      : '남은 여백: 없음';
+  if ($('#layoutSizes').textContent !== sizes) $('#layoutSizes').textContent = sizes;
 }
 
 function fitCanvas() {
