@@ -57,33 +57,25 @@ function drawLabel(text, cx, cy, size, maxW) {
   lines.forEach((l, i) => ctx.fillText(l, cx, y0 + i * lh));
 }
 
-// Preview-only dimensions. The FFmpeg export uses the same layout but never draws these labels.
-function drawMarginSize(m, outW, outH) {
-  if (m.w < 30 || m.h < 24) return;
-  const label = `${m.w}×${m.h}`;
-  ctx.save();
-  let size = Math.min(40, Math.max(16, Math.min(outW, outH) / 30), m.h * 0.48);
-  ctx.font = `600 ${size}px sans-serif`;
-  while (ctx.measureText(label).width > m.w - 12 && size > 9) {
-    size -= 1;
-    ctx.font = `600 ${size}px sans-serif`;
-  }
-  const textW = ctx.measureText(label).width;
-  if (textW > m.w - 8) { ctx.restore(); return; }
-  const padX = Math.min(12, size * 0.4);
-  const padY = Math.min(8, size * 0.25);
-  const boxW = Math.min(m.w - 4, textW + padX * 2);
-  const boxH = Math.min(m.h - 4, size + padY * 2);
-  const cx = m.x + m.w / 2, cy = m.y + m.h / 2;
-  ctx.fillStyle = 'rgba(0,0,0,.78)';
-  ctx.fillRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH);
-  ctx.strokeStyle = 'rgba(255,255,255,.85)';
-  ctx.lineWidth = Math.max(1, size / 20);
-  ctx.strokeRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH);
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(label, cx, cy);
-  ctx.restore();
+// Labels sit over the preview, so a video frame redraw cannot erase them.
+let lastMarginSignature = '';
+function updateMarginOverlay(L) {
+  const host = $('#marginOverlay');
+  const displayW = canvas.clientWidth, displayH = canvas.clientHeight;
+  const margins = L.video ? L.margins.filter((m) =>
+    m.w * displayW / L.outW >= 58 && m.h * displayH / L.outH >= 24) : [];
+  const signature = `${L.outW}x${L.outH}:${displayW}x${displayH}:` +
+    margins.map((m) => `${m.x},${m.y},${m.w},${m.h}`).join('|');
+  if (signature === lastMarginSignature) return;
+  lastMarginSignature = signature;
+  host.replaceChildren(...margins.map((m) => {
+    const label = document.createElement('span');
+    label.className = 'margin-size';
+    label.textContent = `${m.w}×${m.h}`;
+    label.style.left = `${(m.x + m.w / 2) / L.outW * 100}%`;
+    label.style.top = `${(m.y + m.h / 2) / L.outH * 100}%`;
+    return label;
+  }));
 }
 
 function draw() {
@@ -91,6 +83,7 @@ function draw() {
   if (canvas.width !== L.outW || canvas.height !== L.outH) {
     canvas.width = L.outW; canvas.height = L.outH; fitCanvas();
   }
+  updateMarginOverlay(L);
   const base = Math.max(14, Math.round(Math.min(L.outW, L.outH) / 32));
   ctx.fillStyle = state.bg;
   ctx.fillRect(0, 0, L.outW, L.outH);
@@ -135,8 +128,6 @@ function draw() {
     drawFitted(bg.img, { x: 0, y: 0, w: L.outW, h: L.outH }, bg.fit);
   }
 
-  if (L.video) for (const m of L.margins) drawMarginSize(m, L.outW, L.outH);
-
   $('#ratioLabel').textContent = '= ' + ratioText(L.outW, L.outH);
 }
 
@@ -146,6 +137,9 @@ function fitCanvas() {
   const s = Math.min(cw / canvas.width, ch / canvas.height);
   canvas.style.width = Math.floor(canvas.width * s) + 'px';
   canvas.style.height = Math.floor(canvas.height * s) + 'px';
+  $('#canvasWrap').style.width = canvas.style.width;
+  $('#canvasWrap').style.height = canvas.style.height;
+  updateMarginOverlay(computeLayout());
 }
 new ResizeObserver(fitCanvas).observe($('#stage'));
 
