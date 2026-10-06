@@ -57,6 +57,35 @@ function drawLabel(text, cx, cy, size, maxW) {
   lines.forEach((l, i) => ctx.fillText(l, cx, y0 + i * lh));
 }
 
+// Preview-only dimensions. The FFmpeg export uses the same layout but never draws these labels.
+function drawMarginSize(m, outW, outH) {
+  if (m.w < 30 || m.h < 24) return;
+  const label = `${m.w}×${m.h}`;
+  ctx.save();
+  let size = Math.min(40, Math.max(16, Math.min(outW, outH) / 30), m.h * 0.48);
+  ctx.font = `600 ${size}px sans-serif`;
+  while (ctx.measureText(label).width > m.w - 12 && size > 9) {
+    size -= 1;
+    ctx.font = `600 ${size}px sans-serif`;
+  }
+  const textW = ctx.measureText(label).width;
+  if (textW > m.w - 8) { ctx.restore(); return; }
+  const padX = Math.min(12, size * 0.4);
+  const padY = Math.min(8, size * 0.25);
+  const boxW = Math.min(m.w - 4, textW + padX * 2);
+  const boxH = Math.min(m.h - 4, size + padY * 2);
+  const cx = m.x + m.w / 2, cy = m.y + m.h / 2;
+  ctx.fillStyle = 'rgba(0,0,0,.78)';
+  ctx.fillRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH);
+  ctx.strokeStyle = 'rgba(255,255,255,.85)';
+  ctx.lineWidth = Math.max(1, size / 20);
+  ctx.strokeRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH);
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, cx, cy);
+  ctx.restore();
+}
+
 function draw() {
   const L = computeLayout();
   if (canvas.width !== L.outW || canvas.height !== L.outH) {
@@ -86,7 +115,6 @@ function draw() {
       ctx.strokeStyle = 'rgba(255,255,255,.35)';
       ctx.strokeRect(m.x + 4, m.y + 4, m.w - 8, m.h - 8);
       ctx.restore();
-      drawLabel('+ 배경 이미지 (클릭)', m.x + m.w / 2, m.y + m.h / 2, Math.min(base, m.h / 3), m.w * 0.85);
     }
   }
 
@@ -107,11 +135,9 @@ function draw() {
     drawFitted(bg.img, { x: 0, y: 0, w: L.outW, h: L.outH }, bg.fit);
   }
 
+  if (L.video) for (const m of L.margins) drawMarginSize(m, L.outW, L.outH);
+
   $('#ratioLabel').textContent = '= ' + ratioText(L.outW, L.outH);
-  const sizes = !L.video ? '영상 선택 후 여백 크기가 표시됩니다.'
-    : L.margins.length ? '남은 여백: ' + L.margins.map((m) => `${m.name.replace(' 여백', '')} ${m.w}×${m.h}px`).join(' · ')
-      : '남은 여백: 없음';
-  if ($('#layoutSizes').textContent !== sizes) $('#layoutSizes').textContent = sizes;
 }
 
 function fitCanvas() {
