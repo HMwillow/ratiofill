@@ -81,3 +81,11 @@ test('transparent banner overlays a same-ratio video', () => {
   assert.match(filter, /\[1:v\]scale=1080:1920:force_original_aspect_ratio=decrease,format=rgba\[banner\]/);
   assert.match(filter, /\[videoBase\]\[banner\]overlay=x=\(W-w\)\/2:y=\(H-h\)\/2/);
 });
+
+test('transparent PNG slot crops a wide video to its tall opening', () => {
+  const args = buildArgs({ ...base, video: { x: 690, y: 60, w: 540, h: 960, crop: true },
+    background: { image: 'banner.png', fit: 'contain', mode: 'overlay' }, margins: [] });
+  const filter = args[args.indexOf('-filter_complex') + 1];
+  assert.match(filter, /scale=540:960:force_original_aspect_ratio=increase:flags=lanczos,crop=540:960,setsar=1/);
+  assert.match(filter, /pad=1920:1080:690:60/);
+});

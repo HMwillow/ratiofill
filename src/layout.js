@@ -22,11 +22,61 @@
 
   function even(n) { return Math.max(2, Math.round(n / 2) * 2); }
 
-  function computeLayout({ video, outW, outH, pos, videoScale = 1 }) {
+  // Return the largest fully transparent rectangle in a sampled RGBA image.
+  function findTransparentRect(rgba, width, height) {
+    const heights = new Int32Array(width);
+    let best = null, bestArea = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        heights[x] = rgba[(y * width + x) * 4 + 3] < 32 ? heights[x] + 1 : 0;
+      }
+      const stack = [];
+      for (let x = 0; x <= width; x++) {
+        const current = x === width ? 0 : heights[x];
+        while (stack.length && heights[stack[stack.length - 1]] > current) {
+          const h = heights[stack.pop()];
+          const left = stack.length ? stack[stack.length - 1] + 1 : 0;
+          const w = x - left;
+          const area = w * h;
+          if (area > bestArea) { bestArea = area; best = { x: left, y: y - h + 1, w, h }; }
+        }
+        stack.push(x);
+      }
+    }
+    if (!best || bestArea < width * height * 0.03 || best.w < width * 0.08 || best.h < height * 0.08) return null;
+    return { x: best.x / width, y: best.y / height, w: best.w / width, h: best.h / height };
+  }
+
+  // Map a normalized image rectangle into the canvas using the same fit rule as drawFitted.
+  function mapImageRect(slot, imageW, imageH, outW, outH, fit) {
+    if (!slot || !imageW || !imageH) return null;
+    let drawW = outW, drawH = outH;
+    if (fit !== 'stretch') {
+      const scale = fit === 'cover' ? Math.max(outW / imageW, outH / imageH) : Math.min(outW / imageW, outH / imageH);
+      drawW = imageW * scale; drawH = imageH * scale;
+    }
+    const left = Math.max(0, (outW - drawW) / 2 + slot.x * drawW);
+    const top = Math.max(0, (outH - drawH) / 2 + slot.y * drawH);
+    const right = Math.min(outW, (outW - drawW) / 2 + (slot.x + slot.w) * drawW);
+    const bottom = Math.min(outH, (outH - drawH) / 2 + (slot.y + slot.h) * drawH);
+    const x = Math.round(left / 2) * 2, y = Math.round(top / 2) * 2;
+    const w = Math.round((right - x) / 2) * 2, h = Math.round((bottom - y) / 2) * 2;
+    return w >= 16 && h >= 16 ? { x, y, w, h } : null;
+  }
+
+  function computeLayout({ video, outW, outH, pos, videoScale = 1, slot = null }) {
     outW = even(outW); outH = even(outH);
     pos = Math.min(1, Math.max(0, +pos || 0));
     const L = { outW, outH, axis: null, video: null, margins: [] };
     if (!video || !video.width || !video.height) return L;
+    if (slot) {
+      const x = Math.max(0, Math.round(slot.x / 2) * 2), y = Math.max(0, Math.round(slot.y / 2) * 2);
+      const w = Math.min(outW - x, even(slot.w)), h = Math.min(outH - y, even(slot.h));
+      if (w >= 16 && h >= 16) {
+        L.video = { x, y, w, h, crop: true };
+        return L;
+      }
+    }
     const outA = outW / outH, vidA = video.width / video.height;
     let w, h, x, y;
     if (vidA >= outA) {
@@ -83,5 +133,5 @@
       ? 'canvas' : 'margins';
   }
 
-  return { PRESETS, even, computeLayout, ratioText, backgroundMode };
+  return { PRESETS, even, computeLayout, ratioText, backgroundMode, findTransparentRect, mapImageRect };
 });

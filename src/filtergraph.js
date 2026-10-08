@@ -23,7 +23,9 @@
     const margins = (job.margins || []).filter((m) => m.w > 0 && m.h > 0);
     const bg = job.background && job.background.image ? job.background : null;
     const mode = bg && bg.mode;
-    const scaled = `[0:v]scale=${v.w}:${v.h}:flags=lanczos,setsar=1`;
+    const scaled = v.crop
+      ? `[0:v]scale=${v.w}:${v.h}:force_original_aspect_ratio=increase:flags=lanczos,crop=${v.w}:${v.h},setsar=1`
+      : `[0:v]scale=${v.w}:${v.h}:flags=lanczos,setsar=1`;
     const fitImage = (source, label, w, h) => {
       let f;
       if (bg.fit === 'stretch') f = `scale=${w}:${h}`;

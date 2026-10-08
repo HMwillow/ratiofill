@@ -2,7 +2,7 @@
 const bridge = window.RatioFillBridge;
 const $ = (s) => document.querySelector(s);
 
-const { PRESETS, computeLayout: layoutOf, ratioText, backgroundMode } = window.RatioFillLayout;
+const { PRESETS, computeLayout: layoutOf, ratioText, backgroundMode, findTransparentRect, mapImageRect } = window.RatioFillLayout;
 
 const state = {
   video: null,            // { path, width, height, duration, fps, hasAudio, playable }
@@ -10,7 +10,7 @@ const state = {
   pos: 0.5,               // 자유 축 위치 0..1
   videoScale: 1,
   bg: '#000000',
-  background: { image: null, img: null, fit: 'contain', mode: 'auto', transparentCenter: false, inspected: false, inspectPromise: null },
+  background: { image: null, img: null, fit: 'contain', mode: 'auto', transparentCenter: false, slot: null, autoPlacement: false, inspected: false, inspectPromise: null },
   exporting: false,
 };
 
@@ -19,7 +19,13 @@ const ctx = canvas.getContext('2d');
 const videoEl = $('#video');
 
 /* ---------- 레이아웃 ---------- */
-function computeLayout() { return layoutOf(state); }
+function computeLayout() {
+  const bg = state.background;
+  const slot = bg.mode === 'auto' && bg.autoPlacement && bg.slot && bg.img
+    ? mapImageRect(bg.slot, bg.img.naturalWidth, bg.img.naturalHeight, state.outW, state.outH, bg.fit)
+    : null;
+  return layoutOf({ ...state, slot });
+}
 function resolvedBackgroundMode(L) {
   const img = state.background.img;
   if (state.background.mode === 'auto' && state.videoScale < 1 && !state.background.transparentCenter) return 'canvas';
@@ -41,6 +47,16 @@ function drawFitted(img, m, fit) {
   const s = Math.max(m.w / iw, m.h / ih);
   const sw = m.w / s, sh = m.h / s;
   ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, m.x, m.y, m.w, m.h);
+}
+
+function drawVideoFrame(video, rect) {
+  if (!rect.crop) { ctx.drawImage(video, rect.x, rect.y, rect.w, rect.h); return; }
+  const sourceW = video.videoWidth, sourceH = video.videoHeight;
+  const sourceAspect = sourceW / sourceH, targetAspect = rect.w / rect.h;
+  const cropW = sourceAspect > targetAspect ? sourceH * targetAspect : sourceW;
+  const cropH = sourceAspect > targetAspect ? sourceH : sourceW / targetAspect;
+  ctx.drawImage(video, (sourceW - cropW) / 2, (sourceH - cropH) / 2, cropW, cropH,
+    rect.x, rect.y, rect.w, rect.h);
 }
 
 function drawLabel(text, cx, cy, size, maxW) {
@@ -114,7 +130,7 @@ function draw() {
   if (L.video) {
     const v = L.video;
     if (state.video.playable && videoEl.readyState >= 2) {
-      ctx.drawImage(videoEl, v.x, v.y, v.w, v.h);
+      drawVideoFrame(videoEl, v);
     } else {
       ctx.fillStyle = '#3a3b44'; ctx.fillRect(v.x, v.y, v.w, v.h);
       drawLabel(state.video.playable ? '불러오는 중…' : '미리보기 불가 (내보내기는 가능)', v.x + v.w / 2, v.y + v.h / 2, base);
@@ -159,6 +175,8 @@ function setBackgroundImage(p) {
   const bg = state.background;
   bg.image = p; bg.img = null;
   bg.transparentCenter = false;
+  bg.slot = null;
+  bg.autoPlacement = false;
   bg.inspected = false;
   bg.inspectPromise = null;
   $('#imageName').textContent = p ? baseName(p) : '없음';
@@ -176,17 +194,28 @@ function setBackgroundImage(p) {
     bg.inspectPromise = inspectImage(img).then((info) => {
       if (bg.img === img) {
         bg.transparentCenter = !!info.transparentCenter;
+        bg.slot = info.slot;
+        bg.autoPlacement = !!info.slot;
         bg.inspected = true;
+        updateAutoFitButton();
         autoRevealBanner();
         draw();
       }
-    }).catch(() => { if (bg.img === img) { bg.inspected = true; autoRevealBanner(); draw(); } });
+    }).catch(() => { if (bg.img === img) { bg.inspected = true; updateAutoFitButton(); autoRevealBanner(); draw(); } });
   }
+  updateAutoFitButton();
   draw();
+}
+function updateAutoFitButton() {
+  const bg = state.background;
+  const button = $('#btnAutoFit');
+  button.hidden = !bg.slot || bg.mode !== 'auto';
+  button.classList.toggle('on', !!bg.autoPlacement);
+  button.textContent = bg.autoPlacement ? '투명 영역에 자동 배치 중' : '투명 영역에 다시 맞추기';
 }
 function autoRevealBanner() {
   const bg = state.background;
-  if (!state.video || !bg.img || !bg.img.complete || !bg.img.naturalWidth || !bg.inspected || bg.transparentCenter || state.videoScale < 1) return;
+  if (!state.video || !bg.img || !bg.img.complete || !bg.img.naturalWidth || !bg.inspected || bg.slot || bg.transparentCenter || state.videoScale < 1) return;
   const L = computeLayout();
   if (L.margins.length === 0) {
     state.videoScale = 0.62;
@@ -196,10 +225,16 @@ function autoRevealBanner() {
 }
 async function inspectImage(img) {
   if (!img.complete) await new Promise((resolve, reject) => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', reject, { once: true }); });
-  const sample = document.createElement('canvas'); sample.width = 64; sample.height = 64;
+  const sample = document.createElement('canvas');
+  const scale = Math.min(1, 960 / Math.max(img.naturalWidth, img.naturalHeight));
+  sample.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  sample.height = Math.max(1, Math.round(img.naturalHeight * scale));
   const c = sample.getContext('2d', { willReadFrequently: true });
-  c.drawImage(img, 0, 0, 64, 64);
-  return { transparentCenter: c.getImageData(32, 32, 1, 1).data[3] < 64 };
+  c.drawImage(img, 0, 0, sample.width, sample.height);
+  const rgba = c.getImageData(0, 0, sample.width, sample.height).data;
+  const center = rgba[(Math.floor(sample.height / 2) * sample.width + Math.floor(sample.width / 2)) * 4 + 3] < 64;
+  const slot = findTransparentRect(rgba, sample.width, sample.height);
+  return { transparentCenter: center || !!slot, slot };
 }
 $('#btnImage').onclick = pickBackgroundImage;
 $('#btnClearImage').onclick = () => setBackgroundImage(null);
@@ -215,7 +250,13 @@ if (bridge.imageFromUrl) {
   $('#imageUrl').onkeydown = (e) => { if (e.key === 'Enter') fetchUrl(); };
 }
 $('#imageFit').onchange = (e) => { state.background.fit = e.target.value; draw(); };
-$('#imageMode').onchange = (e) => { state.background.mode = e.target.value; draw(); };
+$('#imageMode').onchange = (e) => { state.background.mode = e.target.value; if (e.target.value === 'auto' && state.background.slot) state.background.autoPlacement = true; updateAutoFitButton(); draw(); };
+$('#btnAutoFit').onclick = () => {
+  state.background.autoPlacement = true;
+  state.videoScale = 1; $('#videoScale').value = 100; $('#videoScaleValue').textContent = '100%';
+  state.pos = 0.5; $('#pos').value = 50;
+  updateAutoFitButton(); draw();
+};
 
 /* ---------- 영상 ---------- */
 async function pickVideo() {
@@ -274,10 +315,12 @@ $('#outW').onchange = (e) => { state.outW = clampInt(e.target.value, 16, 7680, 1
 $('#outH').onchange = (e) => { state.outH = clampInt(e.target.value, 16, 7680, 1080); syncSizeInputs(); autoRevealBanner(); draw(); };
 function clampInt(v, lo, hi, def) { v = parseInt(v, 10); if (isNaN(v)) return def; return Math.min(hi, Math.max(lo, v)); }
 
-$('#pos').oninput = (e) => { state.pos = e.target.value / 100; draw(); };
-document.querySelectorAll('[data-pos]').forEach((b) => { b.onclick = () => { state.pos = b.dataset.pos / 100; $('#pos').value = b.dataset.pos; draw(); }; });
+function useManualPlacement() { state.background.autoPlacement = false; updateAutoFitButton(); }
+$('#pos').oninput = (e) => { useManualPlacement(); state.pos = e.target.value / 100; draw(); };
+document.querySelectorAll('[data-pos]').forEach((b) => { b.onclick = () => { useManualPlacement(); state.pos = b.dataset.pos / 100; $('#pos').value = b.dataset.pos; draw(); }; });
 $('#bg').oninput = (e) => { state.bg = e.target.value; draw(); };
 $('#videoScale').oninput = (e) => {
+  useManualPlacement();
   state.videoScale = e.target.value / 100;
   $('#videoScaleValue').textContent = e.target.value + '%';
   draw();
@@ -327,11 +370,11 @@ stage.addEventListener('drop', (e) => {
 /* ---------- 내보내기 ---------- */
 $('#btnExport').onclick = async () => {
   if (!state.video) return toast('먼저 영상을 선택하세요.');
+  if (state.background.inspectPromise) await state.background.inspectPromise;
   const L = computeLayout();
   const inName = baseName(state.video.path).replace(/\.[^.]+$/, '');
   const out = await bridge.pickOutput(`${inName}_${L.outW}x${L.outH}.mp4`);
   if (!out) return;
-  if (state.background.inspectPromise) await state.background.inspectPromise;
   const job = {
     input: state.video.path, output: out,
     outW: L.outW, outH: L.outH, bg: state.bg, crf: +$('#crf').value,

@@ -1,7 +1,7 @@
 {
   "name": "ratio-fill",
   "productName": "RatioFill",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "영상 비율 변환 + 여백 이미지 채우기",
   "main": "main.js",
   "author": "sjb",

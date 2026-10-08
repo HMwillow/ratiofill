@@ -1,7 +1,7 @@
 // 레이아웃 계산 단위 테스트: node --test test/
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { computeLayout, ratioText, backgroundMode, PRESETS } = require('../src/layout');
+const { computeLayout, ratioText, backgroundMode, PRESETS, findTransparentRect, mapImageRect } = require('../src/layout');
 
 test('9:16 영상 → 1:1 출력: 좌우 여백, 가운데 정렬', () => {
   const L = computeLayout({ video: { width: 1080, height: 1920 }, outW: 1080, outH: 1080, pos: 0.5 });
@@ -70,4 +70,24 @@ test('같은 비율의 영상도 크기를 줄여 배너가 보일 공간을 만
   assert.ok(L.margins.length >= 2);
   assert.equal(L.video.x + L.video.w / 2, L.outW / 2);
   assert.equal(L.video.y + L.video.h / 2, L.outH / 2);
+});
+
+test('PNG 투명한 직사각형을 찾아 실제 출력 좌표로 변환한다', () => {
+  const w = 20, h = 12, rgba = new Uint8ClampedArray(w * h * 4);
+  for (let i = 3; i < rgba.length; i += 4) rgba[i] = 255;
+  for (let y = 1; y < 11; y++) for (let x = 7; x < 13; x++) rgba[(y * w + x) * 4 + 3] = 0;
+  const slot = findTransparentRect(rgba, w, h);
+  assert.deepEqual(slot, { x: 7 / 20, y: 1 / 12, w: 6 / 20, h: 10 / 12 });
+  const mapped = mapImageRect({ x: 1380 / 3840, y: 120 / 2160, w: 1080 / 3840, h: 1920 / 2160 }, 3840, 2160, 1920, 1080, 'contain');
+  assert.deepEqual(mapped, { x: 690, y: 60, w: 540, h: 960 });
+  const L = computeLayout({ video: { width: 1920, height: 1080 }, outW: 1920, outH: 1080, pos: 0.5, slot: mapped });
+  assert.deepEqual(L.video, { x: 690, y: 60, w: 540, h: 960, crop: true });
+});
+
+test('디자인마다 다른 위치의 가장 큰 투명 영역을 선택한다', () => {
+  const w = 40, h = 30, rgba = new Uint8ClampedArray(w * h * 4);
+  for (let i = 3; i < rgba.length; i += 4) rgba[i] = 255;
+  for (let y = 14; y < 29; y++) for (let x = 1; x < 18; x++) rgba[(y * w + x) * 4 + 3] = 0;
+  for (let y = 2; y < 11; y++) for (let x = 25; x < 36; x++) rgba[(y * w + x) * 4 + 3] = 0;
+  assert.deepEqual(findTransparentRect(rgba, w, h), { x: 1 / 40, y: 14 / 30, w: 17 / 40, h: 15 / 30 });
 });
