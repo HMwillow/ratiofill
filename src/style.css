@@ -10,6 +10,7 @@ body {
   user-select: none;
 }
 #sidebar { width: 360px; flex: 0 0 360px; overflow-y: auto; padding: 12px; border-right: 1px solid var(--line); }
+#siteBrand { padding: 2px 2px 12px; font-size: 18px; font-weight: 700; letter-spacing: -0.04em; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
 .panel h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
 .panel h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; }
